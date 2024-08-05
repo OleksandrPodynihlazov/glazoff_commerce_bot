@@ -1,14 +1,37 @@
 import telebot
+from telebot import types
 import requests
 import json
 import time
 from bs4 import BeautifulSoup
 
 
-bot_token = telebot.TeleBot("7336652335:AAFbiaChNn64qJ9g8x5sSPpYlOeZuESPWBs")
+bot = telebot.TeleBot("7336652335:AAFbiaChNn64qJ9g8x5sSPpYlOeZuESPWBs")
 channel_name = "@glazoff_tg"
 base_url = 'https://glazoff.com/product-category/poslugy-dlya-internet-magazyniv/'
 total_pages = 3
+
+
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    markup = types.ReplyKeyboardMarkup(row_width=1)
+    price_button = types.KeyboardButton('Показати ціни')
+    markup.add(price_button)
+
+    bot.send_message(message.chat.id, "Вітаю! Натисніть на кнопку, щоб побачити список цін.", reply_markup=markup)
+
+
+# Обробка натискання кнопки
+@bot.message_handler(func=lambda message: message.text == 'Показати ціни')
+def show_prices(message):
+    prices_text = ''
+    for line in scraped_data:
+        caption = f"{line['Name']}  "
+        caption += f"\t {line['Price']}\n\n"
+        prices_text += caption
+    bot.send_message(message.chat.id, f"Ось список цін:\n{prices_text}")
+
+
 def get_data(url):
     response = requests.get(url)
     if response.status_code == 200:
@@ -40,6 +63,8 @@ def scrape_page(base_url,total_pages):
                 })
     return results
 scraped_data = scrape_page(base_url,total_pages)
-for data in scraped_data:
-    print(data)
-bot_token.polling(none_stop=True)
+
+
+# for data in scraped_data:
+#     print(data)
+bot.polling(none_stop=True)
