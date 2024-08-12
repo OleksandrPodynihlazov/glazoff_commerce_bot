@@ -1,8 +1,6 @@
 import telebot
 from telebot import types
 import requests
-import json
-import time
 from bs4 import BeautifulSoup
 
 
@@ -18,9 +16,13 @@ def send_welcome(message):
     markup = types.ReplyKeyboardMarkup(row_width=1)
     price_button = types.KeyboardButton('Показати ціни')
     markup.add(price_button)
-    user = message.from_user.id
+
+    user_id = message.from_user.id
+    first_name = message.from_user.first_name
+    telegram_name = message.from_user.username
+
     bot.send_message(message.chat.id, "Вітаю! Натисніть на кнопку, щоб побачити список цін.", reply_markup=markup)
-    return user
+    return user_id
 #Додати ініціалізацію користувача до бази даних
 
 # Обробка натискання кнопки з меню до переходу на перегляд цін
@@ -32,7 +34,7 @@ def show_prices(message):
     button3 = types.KeyboardButton("Сторінка 3")
     markup.add(button1,button2,button3)
 
-    bot.send_message(message.chat.id,  reply_markup=markup)
+    bot.send_message(message.chat.id,'Оберіть сторінку' , reply_markup=markup)
 #Добавити кнопку повернутися назад у меню
 
 #Обробка кнопок зі списками послуг
@@ -58,7 +60,7 @@ def get_data(url):
         print(f"Webpage downloading error {url}")
         return None
 #Отримання даних з веб сторінки
-def scrape_page(base_url,total_pages,user):
+def scrape_page(base_url,total_pages,user_id):
     results = []
 
     for page in range(1,total_pages+1):
@@ -78,11 +80,11 @@ def scrape_page(base_url,total_pages,user):
                     service_price_tag = service_price_tag.find("ins")
                     service_price_tag = service_price_tag.find("bdi")
                 service_price = service_price_tag.text.strip()
-                results.append(f"[{service_name}]({server_url}{service_url.replace('https://','')}?id={user}): {service_price}\n\n")
+                results.append(f"[{service_name}]({server_url}{service_url.replace('https://','')}?user_id={user_id}): {service_price}\n\n")
 
     return results
 
-scraped_data = scrape_page(base_url,total_pages,user=None)
+scraped_data = scrape_page(base_url,total_pages,user_id)
 
 
 for data in scraped_data:
