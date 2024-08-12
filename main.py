@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 bot = telebot.TeleBot("7336652335:AAFbiaChNn64qJ9g8x5sSPpYlOeZuESPWBs")
 channel_name = "@glazoff_tg"
 base_url = 'https://glazoff.com/product-category/poslugy-dlya-internet-magazyniv/'
+server_url = 'http://127.0.0.1:5000/track/'
 total_pages = 3
 
 #Обробка запуску бота
@@ -17,8 +18,9 @@ def send_welcome(message):
     markup = types.ReplyKeyboardMarkup(row_width=1)
     price_button = types.KeyboardButton('Показати ціни')
     markup.add(price_button)
-
+    user = message.from_user.id
     bot.send_message(message.chat.id, "Вітаю! Натисніть на кнопку, щоб побачити список цін.", reply_markup=markup)
+    return user
 #Додати ініціалізацію користувача до бази даних
 
 # Обробка натискання кнопки з меню до переходу на перегляд цін
@@ -43,7 +45,7 @@ def handle_prices(message):
     elif message.text == 'Сторінка 2':
         selected_products = scraped_data[12:24]
     else:
-        selected_products = scraped_data[24:]
+        selected_products = scraped_data[24:36]
     product_messages = "".join(selected_products)
     bot.send_message(chat_id,product_messages,parse_mode="Markdown")
 
@@ -56,7 +58,7 @@ def get_data(url):
         print(f"Webpage downloading error {url}")
         return None
 #Отримання даних з веб сторінки
-def scrape_page(base_url,total_pages):
+def scrape_page(base_url,total_pages,user):
     results = []
 
     for page in range(1,total_pages+1):
@@ -76,10 +78,11 @@ def scrape_page(base_url,total_pages):
                     service_price_tag = service_price_tag.find("ins")
                     service_price_tag = service_price_tag.find("bdi")
                 service_price = service_price_tag.text.strip()
-                results.append(f"[{service_name}]({service_url}): {service_price}\n\n")
+                results.append(f"[{service_name}]({server_url}{service_url.replace('https://','')}?id={user}): {service_price}\n\n")
 
     return results
-scraped_data = scrape_page(base_url,total_pages)
+
+scraped_data = scrape_page(base_url,total_pages,user=None)
 
 
 for data in scraped_data:
