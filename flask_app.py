@@ -3,24 +3,6 @@ import sqlite3
 
 app = Flask(__name__)
 
-def init_db():
-    connection = sqlite3.connect('click.db')
-    cursor = connection.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS click (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            first_name TEXT,
-            telegram_name TEXT,
-            link_id TEXT,
-            datastamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-    ''')
-    connection.commit()
-    connection.close()
-
-init_db()
-
 @app.route('/track/<path:link_id>')
 def track_link(link_id):
     link_id=link_id.replace('/track/','')
@@ -35,9 +17,13 @@ def log_click(user_id,link_id):
     connection = sqlite3.connect('click.db')
     cursor = connection.cursor()
     cursor.execute('''
-        INSERT INTO click (user_id,link_id)
-        VALUES (?, ?)
-    ''',(user_id,link_id))
+        SELECT link_id FROM click WHERE user_id=?
+    ''',(user_id,))
+    current_links = cursor.fetchone()[0]
+    updated_links = current_links + '|' + link_id if current_links else link_id
+    cursor.execute('''
+    UPDATE click SET link_id=? WHERE user_id = ?
+    ''',(updated_links,user_id))
     connection.commit()
     connection.close()
 if __name__ == '__main__':
