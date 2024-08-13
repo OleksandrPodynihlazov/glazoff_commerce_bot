@@ -2,6 +2,7 @@ import telebot
 from telebot import types
 import requests
 from bs4 import BeautifulSoup
+import sqlite3
 
 
 bot = telebot.TeleBot("7336652335:AAFbiaChNn64qJ9g8x5sSPpYlOeZuESPWBs")
@@ -9,7 +10,11 @@ channel_name = "@glazoff_tg"
 base_url = 'https://glazoff.com/product-category/poslugy-dlya-internet-magazyniv/'
 server_url = 'http://127.0.0.1:5000/track/'
 total_pages = 3
-
+class User:
+    def __init__(self,user_id,first_name,telegram_name):
+        self.user_id = user_id
+        self.first_name = first_name
+        self.telegram_name = telegram_name
 #Обробка запуску бота
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -17,17 +22,16 @@ def send_welcome(message):
     price_button = types.KeyboardButton('Показати ціни')
     markup.add(price_button)
 
-    user_id = message.from_user.id
-    first_name = message.from_user.first_name
-    telegram_name = message.from_user.username
-
+    global new_user
+    new_user=User(message.from_user.id,message.from_user.first_name,message.from_user.username)
     bot.send_message(message.chat.id, "Вітаю! Натисніть на кнопку, щоб побачити список цін.", reply_markup=markup)
-    return user_id
+    log_user()
 #Додати ініціалізацію користувача до бази даних
 
 # Обробка натискання кнопки з меню до переходу на перегляд цін
 @bot.message_handler(func=lambda message: message.text == 'Показати ціни')
 def show_prices(message):
+
     markup = types.ReplyKeyboardMarkup(row_width=1)
     button1 = types.KeyboardButton("Сторінка 1")
     button2 = types.KeyboardButton("Сторінка 2")
@@ -41,7 +45,7 @@ def show_prices(message):
 @bot.message_handler(func=lambda message: message.text in ['Сторінка 1','Сторінка 2','Сторінка 3'])
 def handle_prices(message):
     chat_id = message.chat.id
-
+    scraped_data = scrape_page(base_url,total_pages,new_user.user_id)
     if message.text == 'Сторінка 1':
         selected_products = scraped_data[:12]
     elif message.text == 'Сторінка 2':
@@ -83,10 +87,31 @@ def scrape_page(base_url,total_pages,user_id):
                 results.append(f"[{service_name}]({server_url}{service_url.replace('https://','')}?user_id={user_id}): {service_price}\n\n")
 
     return results
+def init_db():
+    connection = sqlite3.connect('click.db')
+    cursor = connection.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS click (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER UNIQUE,
+            first_name TEXT,
+            telegram_name TEXT,
+            link_id TEXT
+            )
+    ''')
+    connection.commit()
+    connection.close()
 
-scraped_data = scrape_page(base_url,total_pages,user_id)
+def log_user():
+    connection = sqlite3.connect('click.db')
+    cursor = connection.cursor()
+    cursor.execute('''
+    INSERT OR IGNORE INTO click (user_id,first_name, telegram_name,link_id)
+    VALUES(?, ?, ?, ?)
+    ''',(new_user.user_id,new_user.first_name,new_user.telegram_name,''))
+    connection.commit()
+    connection.close()
 
 
-for data in scraped_data:
-    print(data)
+init_db()
 bot.polling(none_stop=True)
