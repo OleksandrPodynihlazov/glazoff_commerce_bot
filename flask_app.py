@@ -3,6 +3,7 @@ import sqlite3
 
 app = Flask(__name__)
 
+#редиректинг користувача на цільове посилання
 @app.route('/track/<path:link_id>')
 def track_link(link_id):
     link_id=link_id.replace('/track/','')
@@ -13,6 +14,7 @@ def track_link(link_id):
     else:
         # Return an error message if user_id or link_id is missing
         return "Missing user_id or link_id", 400
+#ідслідковування кліку та запис кліку до бази даних
 def log_click(user_id,link_id):
     connection = sqlite3.connect('click.db')
     cursor = connection.cursor()

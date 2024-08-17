@@ -1,3 +1,6 @@
+import threading
+import time
+
 import telebot
 from telebot import types
 import requests
@@ -26,7 +29,6 @@ def send_welcome(message):
     new_user=User(message.from_user.id,message.from_user.first_name,message.from_user.username)
     bot.send_message(message.chat.id, "Вітаю! Натисніть на кнопку, щоб побачити список цін.", reply_markup=markup)
     log_user()
-#Додати ініціалізацію користувача до бази даних
 
 # Обробка натискання кнопки з меню до переходу на перегляд цін
 @bot.message_handler(func=lambda message: message.text == 'Показати ціни')
@@ -87,6 +89,26 @@ def scrape_page(base_url,total_pages,user_id):
                 results.append(f"[{service_name}]({server_url}{service_url.replace('https://','')}?user_id={user_id}): {service_price}\n\n")
 
     return results
+
+def load_users():
+    connection = sqlite3.connect('click.db')
+    cursor = connection.cursor()
+    cursor.execute('''
+    SELECT user_id FROM click
+    ''')
+    user_id_list = cursor.fetchall()
+    user_id_list = [user for user in user_id_list if isinstance(user,(int))]
+    connection.commit()
+    connection.close()
+    return user_id_list
+def send_ads(user_id_list):
+    for user in user_id_list:
+        try:
+            bot.send_message(user,"Тут могла бути ваша реклама")
+        except Exception as e:
+            print(f"Failed to send message to user: {user} :{e}")
+        time.sleep(10)
+#ініціалізація бази даних
 def init_db():
     connection = sqlite3.connect('click.db')
     cursor = connection.cursor()
@@ -101,7 +123,7 @@ def init_db():
     ''')
     connection.commit()
     connection.close()
-
+#реєстрація користувача в базі даних
 def log_user():
     connection = sqlite3.connect('click.db')
     cursor = connection.cursor()
@@ -114,4 +136,6 @@ def log_user():
 
 
 init_db()
+load_users()
+threading.Thread(target=send_ads(load_users())).start()
 bot.polling(none_stop=True)
