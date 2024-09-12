@@ -25,8 +25,8 @@ def send_welcome(message):
     price_button = types.KeyboardButton('Показати ціни')
     markup.add(price_button)
 
-    global new_user
-    new_user=User(message.from_user.id,message.from_user.first_name,message.from_user.username)
+    global user
+    user=User(message.from_user.id,message.from_user.first_name,message.from_user.username)
     bot.send_message(message.chat.id, "Вітаю! Натисніть на кнопку, щоб побачити список цін.", reply_markup=markup)
     log_user()
 
@@ -47,7 +47,11 @@ def show_prices(message):
 @bot.message_handler(func=lambda message: message.text in ['Сторінка 1','Сторінка 2','Сторінка 3'])
 def handle_prices(message):
     chat_id = message.chat.id
-    scraped_data = scrape_page(base_url,total_pages,new_user.user_id)
+    for users in load_users():
+        if message.from_user.id == users:
+            scraped_data = scrape_page(base_url,total_pages,user.user_id)
+        else:
+            bot.send_message(chat_id,"Something went wrong")
     if message.text == 'Сторінка 1':
         selected_products = scraped_data[:12]
     elif message.text == 'Сторінка 2':
@@ -97,7 +101,7 @@ def load_users():
     SELECT user_id FROM click
     ''')
     user_id_list = cursor.fetchall()
-    user_id_list = [user for user in user_id_list if isinstance(user,(int))]
+    user_id_list = [users[0] for users in user_id_list]
     connection.commit()
     connection.close()
     return user_id_list
@@ -128,14 +132,16 @@ def log_user():
     connection = sqlite3.connect('click.db')
     cursor = connection.cursor()
     cursor.execute('''
-    INSERT OR IGNORE INTO click (user_id,first_name, telegram_name,link_id)
+    INSERT OR IGNORE INTO click (user_id first_name telegram_name link_id)
     VALUES(?, ?, ?, ?)
-    ''',(new_user.user_id,new_user.first_name,new_user.telegram_name,''))
+    ''',(user.user_id,user.first_name,user.telegram_name,''))
     connection.commit()
     connection.close()
 
 
+
 init_db()
 load_users()
+send_ads(load_users())
 threading.Thread(target=send_ads(load_users())).start()
 bot.polling(none_stop=True)
