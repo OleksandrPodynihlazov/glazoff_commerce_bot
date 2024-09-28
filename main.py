@@ -22,16 +22,31 @@ class User:
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = types.ReplyKeyboardMarkup(row_width=1)
-    price_button = types.KeyboardButton('Показати ціни')
+    price_button = types.KeyboardButton('Переглянути послуги')
+    markup.add(price_button)
+    price_button = types.KeyboardButton('FAQ та підтримка')
+    markup.add(price_button)
+    price_button = types.KeyboardButton('Замовити послугу')
     markup.add(price_button)
 
     global user
     user=User(message.from_user.id,message.from_user.first_name,message.from_user.username)
-    bot.send_message(message.chat.id, "Вітаю! Натисніть на кнопку, щоб побачити список цін.", reply_markup=markup)
+    bot.send_message(message.chat.id,
+                     "Привіт! 👋 "
+                          "Ласкаво просимо до нашого Telegram-бота!"
+                          " Тут ви зможете легко замовити наші послуги з налаштування та наповнення інтернет-магазинів."
+                          "📦 Що ми пропонуємо?"
+                          "Парсинг товарів та контенту"
+                            "Налаштування інтернет-магазинів"
+                            "Створення індивідуальних рішень для вашого бізнесу"
+                            "🌐 Перегляньте весь список послуг ."
+                            "💬 Якщо у вас є питання, натисніть на кнопку нижче, щоб зв’язатися з нашою підтримкою."
+                            "🎯 Готові замовити? Просто оберіть потрібну послугу, і ми все зробимо за вас!"
+                            "Раді допомогти вашому бізнесу зростати! 🚀", reply_markup=markup)
     log_user()
 
 # Обробка натискання кнопки з меню до переходу на перегляд цін
-@bot.message_handler(func=lambda message: message.text == 'Показати ціни')
+@bot.message_handler(func=lambda message: message.text == 'Переглянути послуги')
 def show_prices(message):
 
     markup = types.ReplyKeyboardMarkup(row_width=1)
@@ -41,6 +56,11 @@ def show_prices(message):
     markup.add(button1,button2,button3)
 
     bot.send_message(message.chat.id,'Оберіть сторінку' , reply_markup=markup)
+@bot.message_handler(func=lambda message: message.text == 'FAQ та підтримка')
+def faq(message):
+    markup = types.ReplyKeyboardMarkup(row_width=1)
+    bot.send_message(message.chat.id,"",reply_markup=markup)
+@bot.message_handler(func=lambda message: message.text == 'Замовити послугу')
 #Добавити кнопку повернутися назад у меню
 
 #Обробка кнопок зі списками послуг
@@ -49,9 +69,7 @@ def handle_prices(message):
     chat_id = message.chat.id
     for users in load_users():
         if message.from_user.id == users:
-            scraped_data = scrape_page(base_url,total_pages,user.user_id)
-        else:
-            bot.send_message(chat_id,"Something went wrong")
+            scraped_data = scrape_page(base_url,total_pages,users)
     if message.text == 'Сторінка 1':
         selected_products = scraped_data[:12]
     elif message.text == 'Сторінка 2':
@@ -60,7 +78,10 @@ def handle_prices(message):
         selected_products = scraped_data[24:36]
     product_messages = "".join(selected_products)
     bot.send_message(chat_id,product_messages,parse_mode="Markdown")
-
+@bot.message_handler(commands=['chat_redirection'])
+def chat_redirection(message):
+    developer_link = "https://t.me/AlexGlazoff"
+    bot.send_message(message.chat.id,f"click that link {developer_link}")
 #Завантаження веб сторінки для отримання даних
 def get_data(url):
     response = requests.get(url)
@@ -107,11 +128,11 @@ def load_users():
     return user_id_list
 def send_ads(user_id_list):
     for user in user_id_list:
+        time.sleep(10)
         try:
             bot.send_message(user,"Тут могла бути ваша реклама")
         except Exception as e:
             print(f"Failed to send message to user: {user} :{e}")
-        time.sleep(10)
 #ініціалізація бази даних
 def init_db():
     connection = sqlite3.connect('click.db')
@@ -132,7 +153,7 @@ def log_user():
     connection = sqlite3.connect('click.db')
     cursor = connection.cursor()
     cursor.execute('''
-    INSERT OR IGNORE INTO click (user_id first_name telegram_name link_id)
+    INSERT OR IGNORE INTO click (user_id, first_name, telegram_name, link_id)
     VALUES(?, ?, ?, ?)
     ''',(user.user_id,user.first_name,user.telegram_name,''))
     connection.commit()
@@ -142,6 +163,6 @@ def log_user():
 
 init_db()
 load_users()
-send_ads(load_users())
+#send_ads(load_users())
 threading.Thread(target=send_ads(load_users())).start()
 bot.polling(none_stop=True)
