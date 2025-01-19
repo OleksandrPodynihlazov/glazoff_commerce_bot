@@ -21,6 +21,8 @@ firefox_options.binary_location = "C:/Program Files/Mozilla Firefox/firefox.exe"
 # Ініціалізація браузера (в даному випадку Chrome)
 service = Service("C:/SeleniumBasic/geckodriver.exe", port=8000)  # Вкажіть шлях до geckodriver
 driver = webdriver.Firefox(service=service, options=firefox_options)
+
+
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS pages(
     service_id INTEGER PRIMARY KEY AUTOINCREMENT,
