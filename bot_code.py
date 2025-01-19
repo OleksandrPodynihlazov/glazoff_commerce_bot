@@ -1,6 +1,7 @@
 import datetime
 import time
-
+import os
+from dotenv import load_dotenv
 import telebot
 from telebot import types
 import requests
@@ -8,14 +9,12 @@ from bs4 import BeautifulSoup
 import sqlite3
 import re
 
-bot = telebot.TeleBot("7336652335:AAFbiaChNn64qJ9g8x5sSPpYlOeZuESPWBs")
-channel_name = "@glazoff_tg"
-base_url = 'https://glazoff.com/top-poslug-z-najvyshhym-rejtyngom/'
-server_url = 'http://127.0.0.1:5000/track/'
-total_pages = 3
-total_services = 34
-MY_TELEGRAM_ID = 756851152
-SUPPORT_CONTACT = "AlexGlazoff"
+load_dotenv()
+
+bot = telebot.TeleBot(os.getenv("BOT_TOKEN"))
+MY_TELEGRAM_ID = os.getenv("MY_TELEGRAM_ID")
+SUPPORT_CONTACT = os.getenv("SUPPORT_CONTACT")
+base_url = os.getenv("BASE_URL")
 
 conn = sqlite3.connect('business.db', check_same_thread=False)
 cursor = conn.cursor()
@@ -79,24 +78,28 @@ def send_welcome(message):
     markup = types.ReplyKeyboardMarkup(row_width=1)
     price_button = types.KeyboardButton('Переглянути послуги')
     support_button = types.KeyboardButton('Звернутися до підтримки')
-    markup.add(price_button,support_button)
+    markup.add(price_button, support_button)
 
     bot.send_message(message.chat.id,
-                     "Привіт! 👋 "
-                     "Ласкаво просимо до нашого Telegram-бота!"
-                     " Тут ви зможете легко замовити наші послуги з налаштування та наповнення інтернет-магазинів."
-                     "📦 Що ми пропонуємо?"
-                     "Парсинг товарів та контенту"
-                     "Налаштування інтернет-магазинів"
-                     "Створення індивідуальних рішень для вашого бізнесу"
-                     "🌐 Перегляньте весь список послуг ."
-                     "💬 Якщо у вас є питання, натисніть на кнопку нижче, щоб зв’язатися з нашою підтримкою."
-                     "🎯 Готові замовити? Просто оберіть потрібну послугу, і ми все зробимо за вас!"
+                     "Привіт! 👋\n"
+                     "Ласкаво просимо до нашого Telegram-бота!\n"
+                     " Тут ви зможете легко замовити наші послуги з налаштування та наповнення інтернет-магазинів.\n"
+                     "📦 Що ми пропонуємо?\n"
+                     "Парсинг товарів та контенту\n"
+                     "Налаштування інтернет-магазинів\n"
+                     "Створення індивідуальних рішень для вашого бізнесу\n"
+                     "🌐 Перегляньте весь список послуг .\n"
+                     "💬 Якщо у вас є питання, натисніть на кнопку нижче, щоб зв’язатися з нашою підтримкою.\n"
+                     "🎯 Готові замовити? Просто оберіть потрібну послугу, і ми все зробимо за вас!\n"
                      "Раді допомогти вашому бізнесу зростати! 🚀", reply_markup=markup)
+
 
 @bot.message_handler(func=lambda message: message.text == 'Звернутися до підтримки')
 def support(message):
-    bot.send_message(message.chat.id,f"Напишіть, будь ласка, сюди, якщо у вас є якісь питання:{"https://t.me/AlexGlazoff"}")
+    bot.send_message(message.chat.id,
+                     f"Напишіть, будь ласка, сюди, якщо у вас є якісь питання:https://t.me/AlexGlazoff")
+
+
 @bot.message_handler(func=lambda message: message.text == 'Переглянути послуги')
 def show_prices(message):
     markup = types.InlineKeyboardMarkup()
@@ -131,7 +134,7 @@ def button_handler(call: types.CallbackQuery):
         button2 = types.KeyboardButton("Дізнатися більше")
         back_button = types.KeyboardButton("Переглянути послуги")
         support_button = types.KeyboardButton('Звернутися до підтримки')
-        markup.add(button1, button2, back_button,support_button)
+        markup.add(button1, button2, back_button, support_button)
 
         # Відправляємо повідомлення з новою клавіатурою
         bot.send_message(
@@ -151,20 +154,21 @@ def handle_service_options(message):
     markup = types.ReplyKeyboardMarkup()
     back_button = types.KeyboardButton("Переглянути послуги")
     support_button = types.KeyboardButton('Звернутися до підтримки')
-    markup.add( back_button,support_button)
+    markup.add(back_button, support_button)
     if user_id in client_data:
         bot.send_message(message.chat.id, "Будь ласка, введіть ваші данні через кому:\n"
                                           "Як до вас звертатися:\n"
                                           "Номер телефону:\n"
-                                          "Електронна адреса:",reply_markup=markup)
-        if"Переглянути послуги" in message.text:
+                                          "Електронна адреса:", reply_markup=markup)
+        if "Переглянути послуги" in message.text:
             bot.register_next_step_handler(message, show_prices)
         bot.register_next_step_handler(message, order_complete)
+
 
 def order_complete(message):
     user_id = message.from_user.id
     try:
-        if user_id  in client_data:
+        if user_id in client_data:
             client_data[user_id].name = message.text.split(",")[0].strip()
             client_data[user_id].phone_number = message.text.split(",")[1].strip()
             client_data[user_id].email = message.text.split(",")[2].strip()
@@ -186,7 +190,7 @@ def order_complete(message):
             ''', (
                 user_id,
                 client_data[user_id].service,
-                datetime.datetime.now()
+                datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             ))
             conn.commit()
             # Створюємо повідомлення для вас із зібраними даними
@@ -201,8 +205,6 @@ def order_complete(message):
             bot.send_message(message.chat.id, "Дякуємо за ваше замовлення! Ми зв'яжемося з вами найближчим часом.")
     except IndexError:
         return 0
-
-
 
 
 @bot.message_handler(func=lambda message: message.text == "Дізнатися більше")
