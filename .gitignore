@@ -1,0 +1,8 @@
+.env
+business.db
+drop.py
+.idea/
+env/
+__pycache__/
+#experimental_version/
+current_version/
